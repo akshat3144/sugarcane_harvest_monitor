@@ -1,5 +1,5 @@
 """
-Smart Farm Health & Harvest Prediction API
+Sugarcane Harvest Monitor Prediction API
 FastAPI backend for processing farm data and serving NDVI analytics
 """
 from fastapi import FastAPI, HTTPException, File, UploadFile
@@ -19,7 +19,7 @@ from backend.database import init_db
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Smart Farm Harvest API",
+    title="Sugarcane Harvest Monitor API",
     description="Agricultural intelligence API for NDVI monitoring and harvest prediction",
     version="1.0.0"
 )
@@ -49,7 +49,7 @@ async def startup_event():
 async def root():
     return {
         "status": "healthy",
-        "service": "Smart Farm Harvest API",
+        "service": "Sugarcane Harvest Monitor API",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat()
     }

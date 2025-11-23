@@ -1,4 +1,4 @@
-# CNH Dashboard
+# Sugarcane Harvest Monitor
 
 A full-stack dashboard for farm management, NDVI analysis, and harvest monitoring. Built with React, FastAPI, and Google Earth Engine.
 
@@ -25,7 +25,7 @@ A full-stack dashboard for farm management, NDVI analysis, and harvest monitorin
 
 ## Project Overview
 
-CNH Dashboard is a web application for visualizing, analyzing, and managing farm data. It integrates satellite-based NDVI (Normalized Difference Vegetation Index) analysis to monitor crop health and supports CSV uploads for farm polygons. The dashboard provides real-time insights, harvest predictions, and interactive maps.
+Sugarcane Harvest Monitor is a web application for visualizing, analyzing, and managing farm data. It integrates satellite-based NDVI (Normalized Difference Vegetation Index) analysis to monitor crop health and supports CSV uploads for farm polygons. The dashboard provides real-time insights, harvest predictions, and interactive maps.
 
 ## Features
 
