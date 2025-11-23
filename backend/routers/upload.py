@@ -5,11 +5,13 @@ import os
 
 router = APIRouter()
 
+
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '../../data')
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload-csv")
 def upload_csv(file: UploadFile = File(...)):
+    # Ensure the upload directory exists at runtime
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed.")
     file_path = os.path.join(UPLOAD_DIR, file.filename)
