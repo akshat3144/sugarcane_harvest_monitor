@@ -10,12 +10,16 @@ import {
 } from "recharts";
 import { fetchNDVIChart } from "@/lib/api";
 
-export const NDVIChart = () => {
+type NDVIChartProps = {
+  refreshKey?: number;
+};
+
+export const NDVIChart = ({ refreshKey }: NDVIChartProps) => {
   const [data, setData] = useState<{ name: string; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    setLoading(true);
     fetchNDVIChart().then((chart) => {
-      // chart.labels: string[], chart.values: number[]
       setData(
         chart.labels.map((name: string, i: number) => ({
           name,
@@ -24,7 +28,7 @@ export const NDVIChart = () => {
       );
       setLoading(false);
     });
-  }, []);
+  }, [refreshKey]);
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data}>

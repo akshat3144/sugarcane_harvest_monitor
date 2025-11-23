@@ -33,6 +33,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const loadFarms = async () => {
@@ -68,7 +69,7 @@ const Dashboard = () => {
       setLoading(false);
     };
     loadFarms();
-  }, [selectedVillage]);
+  }, [selectedVillage, refreshKey]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -84,7 +85,11 @@ const Dashboard = () => {
       setStatsLoading(false);
     };
     loadStats();
-  }, [selectedVillage]);
+  }, [selectedVillage, refreshKey]);
+
+  const handleUploadComplete = () => {
+    setRefreshKey((k) => k + 1);
+  };
 
   return (
     <div className="min-h-screen bg-dashboard-bg text-foreground">
@@ -232,17 +237,17 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold mb-4 text-white">
               Average NDVI by Village
             </h3>
-            <NDVIChart />
+            <NDVIChart refreshKey={refreshKey} />
           </Card>
           {/* Harvest Area Chart */}
           <Card className="bg-dashboard-card border-dashboard-border p-2 md:p-6">
             <h3 className="text-lg font-semibold mb-4 text-white">
               Harvest-Ready Area by Village
             </h3>
-            <HarvestChart />
+            <HarvestChart refreshKey={refreshKey} />
           </Card>
           {/* CSV Upload UI */}
-          <CsvUpload />
+          <CsvUpload onUploadComplete={handleUploadComplete} />
         </div>
       </div>
     </div>

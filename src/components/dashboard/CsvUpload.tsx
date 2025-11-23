@@ -1,15 +1,19 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
-const CsvUpload = () => {
-  const [file, setFile] = useState(null);
-  const [jobId, setJobId] = useState(null);
-  const [status, setStatus] = useState(null);
-  const [logs, setLogs] = useState([]);
+type CsvUploadProps = {
+  onUploadComplete?: () => void;
+};
+
+const CsvUpload: React.FC<CsvUploadProps> = ({ onUploadComplete }) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFile(e.target.files?.[0] || null);
   };
 
   const handleUpload = async () => {
@@ -27,14 +31,14 @@ const CsvUpload = () => {
       setStatus("pending");
       setLogs([]);
       pollJobStatus(data.job_id);
-    } catch (err) {
+    } catch (err: any) {
       setStatus("error");
       setLogs([err.message]);
     }
     setUploading(false);
   };
 
-  const pollJobStatus = async (jobId) => {
+  const pollJobStatus = async (jobId: string) => {
     let done = false;
     while (!done) {
       await new Promise((r) => setTimeout(r, 1500));
@@ -44,6 +48,9 @@ const CsvUpload = () => {
       setLogs(data.logs || []);
       if (data.status === "finished" || data.status === "failed") {
         done = true;
+        if (data.status === "finished" && onUploadComplete) {
+          onUploadComplete();
+        }
       }
     }
   };

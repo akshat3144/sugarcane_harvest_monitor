@@ -15,7 +15,11 @@ const metricOptions = [
   { value: "percent", label: "% of Farms" },
 ];
 
-export const HarvestChart = () => {
+type HarvestChartProps = {
+  refreshKey?: number;
+};
+
+export const HarvestChart = ({ refreshKey }: HarvestChartProps) => {
   const [metric, setMetric] = useState("area");
   const [data, setData] = useState<{ name: string; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +37,7 @@ export const HarvestChart = () => {
         );
         setLoading(false);
       });
-  }, [metric]);
+  }, [metric, refreshKey]);
 
   return (
     <div>
