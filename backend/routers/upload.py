@@ -23,6 +23,15 @@ def run_ingest_job(job, file_path):
     ndvi_csv_path = os.path.join(UPLOAD_DIR, 'ndvi_recent_prev.csv')
     final_geojson_path = os.path.join(UPLOAD_DIR, 'farms_final.geojson')
     log_path = os.path.join(UPLOAD_DIR, 'ingest.log')
+
+    # Remove old files if they exist
+    for f in [geojson_path, ndvi_csv_path, final_geojson_path, log_path]:
+        try:
+            if os.path.exists(f):
+                os.remove(f)
+        except Exception as e:
+            pass  # Ignore errors in cleanup
+
     try:
         n_ok, n_rej = ingest.full_pipeline(
             file_path,

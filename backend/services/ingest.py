@@ -16,7 +16,7 @@ def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_ge
 
     # Step 2: NDVI extraction (call external script)
     if not os.path.exists(ndvi_csv_path):
-        ndvi_script = os.path.join(os.path.dirname(__file__), '../../ndvi_extraction.py')
+        ndvi_script = os.path.join(os.path.dirname(__file__), 'ndvi_extraction.py')
         if not os.path.exists(ndvi_script):
             raise FileNotFoundError(f"NDVI extraction script not found: {ndvi_script}")
         result = subprocess.run([
