@@ -81,7 +81,7 @@ Create a `.env` file in the project root with the following contents (edit as ne
 VITE_API_URL=http://localhost:8000/api
 
 # Database Configuration
-DATABASE_URL=postgresql://postgres:Akshat123@localhost:5432/cnh
+DATABASE_URL=postgresql://username:password@hostname/db
 
 # Google Earth Engine
 # Initialize with: earthengine authenticate
