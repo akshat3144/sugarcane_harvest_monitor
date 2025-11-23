@@ -31,6 +31,9 @@ def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_ge
     # Step 3: Merge NDVI results
     gdf = gpd.read_file(geojson_path)
     ndvi = pd.read_csv(ndvi_csv_path)
+    # Deduplicate NDVI results by farm_id (keep first)
+    if 'farm_id' in ndvi.columns:
+        ndvi = ndvi.drop_duplicates(subset='farm_id', keep='first').reset_index(drop=True)
     merged = gdf.merge(ndvi, on="farm_id", how="left")
 
     # Step 4: Apply harvest flag
@@ -93,6 +96,9 @@ def csv_to_geojson(csv_path: str, geojson_path: str, log_path: Optional[str] = N
 
     import difflib
     df = pd.read_csv(csv_path)
+    # Keep only the first occurrence of each unique farm_id
+    if 'farm_id' in df.columns:
+        df = df.drop_duplicates(subset='farm_id', keep='first').reset_index(drop=True)
     # Normalize columns: strip, lower, remove extra spaces
     norm_map = {c: c.strip().lower().replace(' ', '') for c in df.columns}
     required_norm = {c: c.strip().lower().replace(' ', '') for c in REQUIRED_COLUMNS}

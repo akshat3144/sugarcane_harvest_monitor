@@ -1,130 +1,176 @@
-# Welcome to your Lovable project
+# CNH Dashboard
 
-## Project info
+A full-stack dashboard for farm management, NDVI analysis, and harvest monitoring. Built with React, FastAPI, and Google Earth Engine.
 
-**URL**: https://lovable.dev/projects/e2454624-4e85-43cb-ac5a-9ad9444c0fa1
+---
 
-## How can I edit this code?
+## Table of Contents
 
-There are several ways of editing your application.
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Architecture](#architecture)
+- [Folder Structure](#folder-structure)
+- [Setup &amp; Installation](#setup--installation)
+- [Backend Details](#backend-details)
+- [NDVI Extraction Pipeline](#ndvi-extraction-pipeline)
+- [Frontend Details](#frontend-details)
+- [Data Flow](#data-flow)
+- [API Endpoints](#api-endpoints)
+- [Customization](#customization)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e2454624-4e85-43cb-ac5a-9ad9444c0fa1) and start prompting.
+## Project Overview
 
-Changes made via Lovable will be committed automatically to this repo.
+CNH Dashboard is a web application for visualizing, analyzing, and managing farm data. It integrates satellite-based NDVI (Normalized Difference Vegetation Index) analysis to monitor crop health and supports CSV uploads for farm polygons. The dashboard provides real-time insights, harvest predictions, and interactive maps.
 
-**Use your preferred IDE**
+## Features
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Upload farm boundary CSVs and process them into GeoJSON.
+- Automated NDVI extraction using Google Earth Engine and Sentinel-2 imagery.
+- Harvest flagging based on NDVI trends.
+- Responsive dashboard with charts, maps, and statistics.
+- RESTful API for data access and integration.
+- Data deduplication and robust error handling.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Architecture
 
-Follow these steps:
+- **Frontend:** React, TypeScript, Tailwind CSS, Recharts
+- **Backend:** FastAPI, Python, GeoPandas, Google Earth Engine (via `ee` Python API)
+- **Data:** CSV, GeoJSON, NDVI CSV
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e2454624-4e85-43cb-ac5a-9ad9444c0fa1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
-
-## Backend CSV to GeoJSON Ingestion
-
-This project ingests farm metadata from CSV, converts to GeoJSON, computes NDVI (mocked), and exposes a FastAPI backend for data upload and retrieval.
-
-### Python dependencies
+## Folder Structure
 
 ```
-pip install fastapi uvicorn pandas geopandas shapely sqlalchemy geoalchemy2 alembic celery redis pytest httpx
+├── backend/
+│   ├── main.py           # FastAPI entrypoint
+│   ├── models.py         # Data models
+│   ├── routers/          # API endpoints
+│   ├── services/         # Data processing scripts
+│   │   ├── ingest.py     # Full pipeline logic
+│   │   ├── ndvi_extraction.py # NDVI extraction (GEE)
+│   │   └── merge_ndvi_and_harvest.py # Merging logic
+│   └── ...
+├── data/                 # Uploaded and processed data
+│   ├── farms.geojson
+│   ├── farms_final.geojson
+│   ├── ndvi_recent_prev.csv
+│   └── ...
+├── src/                  # Frontend React app
+│   ├── pages/
+│   ├── components/
+│   └── ...
+├── public/
+├── requirements.txt      # Python dependencies
+├── package.json
+├── README.md
+└── ...
 ```
 
-### Database
+## Setup & Installation
 
-- Set up PostgreSQL with PostGIS extension.
-- Configure connection in `.env`.
-- Run Alembic migrations (stubs provided).
+### Environment Variables
 
-### Running Locally
+Create a `.env` file in the project root with the following contents (edit as needed):
 
-- Start backend:
-  ```
-  uvicorn backend.main:app --reload
-  ```
-- Start worker (if using Celery):
-  ```
-  celery -A backend.tasks worker --loglevel=info
-  ```
-- Run CLI ingestion:
-  ```
-  python scripts/process_local_csv.py --csv data/clean.csv
-  ```
-- Run tests:
-  ```
-  pytest
-  ```
+```dotenv
+# Backend API URL for frontend
+VITE_API_URL=http://localhost:8000/api
 
-### NDVI Extraction
+# Database Configuration
+DATABASE_URL=postgresql://postgres:Akshat123@localhost:5432/cnh
 
-- The NDVI computation is mocked in `backend/services/ndvi.py`.
-- To use real Google Earth Engine, replace the mock in `compute_ndvi_for_geometry` with GEE code and add credentials as needed.
+# Google Earth Engine
+# Initialize with: earthengine authenticate
+EE_PROJECT_ID=your-project-id
 
-### API Endpoints
+# API Configuration
+API_HOST=0.0.0.0
+API_PORT=8000
 
-- `POST /api/upload-csv` — Upload CSV, triggers ingestion, returns job id.
-- `GET /api/jobs/{job_id}` — Get job status/logs.
-- `GET /api/farms` — List farms (GeoJSON, paginated, filterable).
-- `GET /api/farms/{farm_id}` — Get farm geometry + NDVI history.
+# CORS Origins (comma-separated)
+CORS_ORIGINS=http://localhost:8080,http://localhost:5173
+```
 
-### Data Validation
+### Prerequisites
 
-- At least 3 valid corners required per farm.
-- Invalid rows are rejected and logged.
-- Harvest flag: `1` if `recent_ndvi < 0.5` and `recent_ndvi < prev_ndvi`, else `0`.
+- Python 3.9+
+- Node.js 18+
+- Google Earth Engine account and service credentials
 
-### Where to Replace NDVI Mock
+### Backend Setup
 
-- See `backend/services/ndvi.py`, function `compute_ndvi_for_geometry`.
+1. Install Python dependencies (from the project root):
+   ```sh
+   pip install -r requirements.txt
+   ```
+2. Set up Google Earth Engine credentials:
+   - Set the environment variable `EE_PROJECT_ID` to your GEE project.
+   - Authenticate with GEE as needed.
+3. **Run the backend from the project root:**
+   ```sh
+   uvicorn backend.main:app --reload
+   ```
+
+### Frontend Setup
+
+1. Navigate to the project root:
+   ```sh
+   npm install
+   npm run dev
+   ```
+
+## Backend Details
+
+- **main.py:** FastAPI app, includes routers for upload, farms, NDVI, etc.
+- **services/ingest.py:** Orchestrates the full data pipeline: CSV → GeoJSON → NDVI extraction → merge → harvest flag → final GeoJSON.
+- **services/ndvi_extraction.py:** Uses Google Earth Engine to compute NDVI for each farm polygon over two time windows (recent and previous), outputs per-farm NDVI metrics.
+- **services/merge_ndvi_and_harvest.py:** Merges NDVI results with farm polygons and computes harvest flags.
+- **routers/upload.py:** Handles CSV uploads, triggers the pipeline, and ensures old data is overwritten.
+
+## NDVI Extraction Pipeline
+
+1. **CSV Upload:** User uploads a CSV with farm boundaries.
+2. **CSV to GeoJSON:** Backend converts CSV to GeoJSON, deduplicating by `farm_id`.
+3. **NDVI Extraction:**
+   - For each farm, the backend calls `ndvi_extraction.py`.
+   - The script uses GEE to fetch Sentinel-2 imagery, computes NDVI for recent and previous periods, and writes results to CSV.
+   - NDVI results are deduplicated by `farm_id` before merging.
+4. **Merge & Harvest Flag:** NDVI results are merged with farm polygons. A harvest flag is set if NDVI drops below a threshold and is decreasing.
+5. **GeoJSON Output:** The final merged data is saved as `farms_final.geojson` for dashboard and API use.
+
+## Frontend Details
+
+- Built with React and TypeScript.
+- Uses Tailwind CSS for styling and Recharts for data visualization.
+- Fetches data from backend APIs for maps, charts, and stats.
+- Responsive design for desktop and mobile.
+
+## Data Flow
+
+```
+CSV Upload → CSV to GeoJSON → NDVI Extraction (GEE) → Merge → Harvest Flag → GeoJSON → Dashboard/API
+```
+
+## API Endpoints
+
+- `POST /upload-csv` — Upload a new farm CSV (overwrites old data)
+- `GET /farms` — List all farms (from final GeoJSON)
+- `GET /farms/{farm_id}` — Get details for a specific farm
+- `GET /jobs/{job_id}` — Check status of a background job
+- Additional endpoints for NDVI, stats, and charts
+
+## Customization
+
+- **NDVI thresholds:** Adjust in `merge_ndvi_and_harvest.py` or pipeline logic.
+- **Data columns:** Update `REQUIRED_COLUMNS` in `ingest.py` as needed.
+- **Frontend:** Modify React components in `src/` for custom UI/UX.
+
+## Troubleshooting
+
+- **NDVI extraction errors:** Ensure GEE credentials are set and the farm polygons are valid.
+- **Row count mismatch:** The pipeline now deduplicates by `farm_id` at all stages.
+- **Server errors:** Check logs in `data/ingest.log` and backend terminal output.
