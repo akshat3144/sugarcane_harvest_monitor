@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 160 8% 96%;
+    --foreground: 160 10% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 160 10% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 160 10% 10%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 142 30% 85%;
+    --secondary-foreground: 160 10% 10%;
+
+    --muted: 160 10% 90%;
+    --muted-foreground: 160 5% 40%;
+
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 160 10% 85%;
+    --input: 160 10% 85%;
+    --ring: 142 76% 36%;
+
+    --radius: 0.75rem;
+
+    /* Farm health status colors */
+    --health-excellent: 142 76% 36%;
+    --health-good: 84 81% 44%;
+    --health-moderate: 45 93% 47%;
+    --health-poor: 25 95% 53%;
+    --health-critical: 0 84% 60%;
+
+    /* Dashboard specific */
+    --dashboard-bg: 160 6% 12%;
+    --dashboard-card: 160 8% 16%;
+    --dashboard-border: 160 5% 22%;
+    --chart-grid: 160 5% 25%;
+    --success: 142 76% 36%;
+    --warning: 45 93% 47%;
+    --danger: 0 84% 60%;
+  }
+
+  .dark {
+    --background: 160 6% 12%;
+    --foreground: 160 10% 95%;
+
+    --card: 160 8% 16%;
+    --card-foreground: 160 10% 95%;
+
+    --popover: 160 8% 16%;
+    --popover-foreground: 160 10% 95%;
+
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 160 8% 20%;
+    --secondary-foreground: 160 10% 95%;
+
+    --muted: 160 8% 20%;
+    --muted-foreground: 160 5% 60%;
+
+    --accent: 45 93% 47%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 160 5% 22%;
+    --input: 160 8% 20%;
+    --ring: 142 76% 36%;
+
+    /* Farm health status colors */
+    --health-excellent: 142 76% 36%;
+    --health-good: 84 81% 44%;
+    --health-moderate: 45 93% 47%;
+    --health-poor: 25 95% 53%;
+    --health-critical: 0 84% 60%;
+
+    /* Dashboard specific */
+    --dashboard-bg: 160 6% 12%;
+    --dashboard-card: 160 8% 16%;
+    --dashboard-border: 160 5% 22%;
+    --chart-grid: 160 5% 25%;
+    --success: 142 76% 36%;
+    --warning: 45 93% 47%;
+    --danger: 0 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    @apply dark;
+  }
+}
+
+/* Leaflet map styles */
+.leaflet-container {
+  @apply bg-card rounded-lg;
+}
+
+.leaflet-popup-content-wrapper {
+  @apply bg-card border border-border rounded-lg;
+}
+
+.leaflet-popup-content {
+  @apply text-foreground;
+}
