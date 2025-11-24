@@ -56,7 +56,7 @@ const CsvUpload: React.FC<CsvUploadProps> = ({ onUploadComplete }) => {
   };
 
   return (
-    <Card className="bg-dashboard-card border-dashboard-border w-full my-8">
+    <Card className="bg-dashboard-card border-dashboard-border w-full">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg text-white">Upload Farm CSV</CardTitle>
       </CardHeader>

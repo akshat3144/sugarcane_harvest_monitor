@@ -145,17 +145,6 @@ const Dashboard = () => {
               trend=""
             />
             <StatsCard
-              title="Avg NDVI"
-              value={statsLoading || !stats ? "-" : stats.avg_ndvi.toFixed(3)}
-              icon={Leaf}
-              trend={
-                stats && stats.avg_ndvi_change
-                  ? ((stats.avg_ndvi_change / 0.5) * 100).toFixed(1) + "%"
-                  : ""
-              }
-              trendUp={stats && stats.avg_ndvi_change >= 0}
-            />
-            <StatsCard
               title="Harvest Ready"
               value={
                 statsLoading || !stats
@@ -173,6 +162,17 @@ const Dashboard = () => {
               }
             />
             <StatsCard
+              title="Avg NDVI"
+              value={statsLoading || !stats ? "-" : stats.avg_ndvi.toFixed(3)}
+              icon={Leaf}
+              trend={
+                stats && stats.avg_ndvi_change
+                  ? ((stats.avg_ndvi_change / 0.5) * 100).toFixed(1) + "%"
+                  : ""
+              }
+              trendUp={stats && stats.avg_ndvi_change >= 0}
+            />
+            <StatsCard
               title="NDVI Change"
               value={
                 stats && stats.avg_ndvi_change
@@ -185,69 +185,25 @@ const Dashboard = () => {
               trendUp={stats && stats.avg_ndvi_change >= 0}
             />
           </div>
-          {/* NDVI Health Legend below stats */}
-          <Card className="bg-dashboard-card border-dashboard-border p-2 md:p-4 mt-4">
-            <h3 className="text-sm font-semibold mb-3 text-white">
-              NDVI Health Legend
-            </h3>
-            <div className="flex flex-wrap gap-x-8 gap-y-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: "#22c55e" }}
-                />
-                <span className="text-sm text-white">Excellent (≥0.7)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: "#84cc16" }}
-                />
-                <span className="text-sm text-white">Good (0.6-0.7)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: "#eab308" }}
-                />
-                <span className="text-sm text-white">Moderate (0.5-0.6)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: "#f97316" }}
-                />
-                <span className="text-sm text-white">Poor (0.4-0.5)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-4 w-4 rounded"
-                  style={{ backgroundColor: "#ef4444" }}
-                />
-                <span className="text-sm text-white">Critical (&lt;0.4)</span>
-              </div>
-            </div>
-          </Card>
         </div>
         {/* Right Side - Charts & Stats */}
         <div className="md:col-span-5 space-y-4 order-2 md:order-2">
-          {/* NDVI Trend Chart */}
-          {/* Legend */}
-          <Card className="bg-dashboard-card border-dashboard-border p-2 md:p-6">
-            <h3 className="text-lg font-semibold mb-4 text-white">
-              Average NDVI by Village
-            </h3>
-            <NDVIChart refreshKey={refreshKey} />
-          </Card>
-          {/* Harvest Area Chart */}
+          {/* CSV Upload UI - moved above plots */}
+          <CsvUpload onUploadComplete={handleUploadComplete} />
+          {/* Harvest Area Chart - moved above NDVI Chart */}
           <Card className="bg-dashboard-card border-dashboard-border p-2 md:p-6">
             <h3 className="text-lg font-semibold mb-4 text-white">
               Harvest-Ready Area by Village
             </h3>
             <HarvestChart refreshKey={refreshKey} />
           </Card>
-          {/* CSV Upload UI */}
-          <CsvUpload onUploadComplete={handleUploadComplete} />
+          {/* NDVI Trend Chart */}
+          <Card className="bg-dashboard-card border-dashboard-border p-2 md:p-6">
+            <h3 className="text-lg font-semibold mb-4 text-white">
+              Average NDVI by Village
+            </h3>
+            <NDVIChart refreshKey={refreshKey} />
+          </Card>
         </div>
       </div>
     </div>
