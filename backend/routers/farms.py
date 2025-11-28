@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from sqlalchemy.orm import Session
 from typing import Optional
 from geoalchemy2.functions import ST_AsGeoJSON, ST_Intersects, ST_MakeEnvelope, ST_Simplify, ST_Transform
-from backend.database import get_db, Farm
+from database import get_db, Farm
 import json
 
 router = APIRouter()

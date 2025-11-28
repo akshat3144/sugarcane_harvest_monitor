@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
-from backend.database import get_db, Farm
+from database import get_db, Farm
 
 router = APIRouter()
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
-from backend.tasks import submit_job, get_job
-from backend.services import ingest
+from tasks import submit_job, get_job
+from services import ingest
 import os
 
 router = APIRouter()

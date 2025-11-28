@@ -1,6 +1,6 @@
 from typing import List, Tuple, Optional
 import os
-from backend.database import SessionLocal, Farm
+from database import SessionLocal, Farm
 from geoalchemy2.shape import from_shape
 
 def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_geojson_path: Optional[str] = None, log_path: Optional[str] = None) -> Tuple[int, int]:
