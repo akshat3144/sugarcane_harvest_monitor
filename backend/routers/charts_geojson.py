@@ -1,35 +1,53 @@
 """
-Chart data endpoints for dashboard visualizations (GeoJSON version)
+Chart data endpoints for dashboard visualizations (PostGIS version)
 """
-from fastapi import APIRouter
-import geopandas as gpd
-import os
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from backend.database import get_db, Farm
 
 router = APIRouter()
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), '../../data/farms_final.geojson')
 
 @router.get("/ndvi-by-village")
-def ndvi_by_village():
-    if not os.path.exists(GEOJSON_PATH):
+def ndvi_by_village(db: Session = Depends(get_db)):
+    """Get average NDVI by village"""
+    results = db.query(
+        Farm.vill_name,
+        func.avg(Farm.recent_ndvi).label('avg_ndvi')
+    ).filter(
+        Farm.recent_ndvi.isnot(None)
+    ).group_by(
+        Farm.vill_name
+    ).order_by(
+        Farm.vill_name
+    ).all()
+    
+    if not results:
         return {"labels": [], "values": []}
-    gdf = gpd.read_file(GEOJSON_PATH)
-    if 'Vill_Name' not in gdf or 'recent_ndvi' not in gdf:
-        return {"labels": [], "values": []}
-    grouped = gdf.groupby('Vill_Name')['recent_ndvi'].mean().reset_index()
+    
     return {
-        "labels": grouped['Vill_Name'].tolist(),
-        "values": grouped['recent_ndvi'].round(3).tolist()
+        "labels": [r.vill_name for r in results],
+        "values": [round(float(r.avg_ndvi), 3) for r in results]
     }
 
 @router.get("/harvest-area-timeline")
-def harvest_area_timeline():
-    if not os.path.exists(GEOJSON_PATH):
+def harvest_area_timeline(db: Session = Depends(get_db)):
+    """Get harvest-ready area by village"""
+    results = db.query(
+        Farm.vill_name,
+        func.sum(Farm.area).label('total_area')
+    ).filter(
+        Farm.harvest_flag == 1
+    ).group_by(
+        Farm.vill_name
+    ).order_by(
+        Farm.vill_name
+    ).all()
+    
+    if not results:
         return {"labels": [], "values": []}
-    gdf = gpd.read_file(GEOJSON_PATH)
-    if 'Vill_Name' not in gdf or 'Area' not in gdf or 'harvest_flag' not in gdf:
-        return {"labels": [], "values": []}
-    grouped = gdf[gdf['harvest_flag'] == 1].groupby('Vill_Name')['Area'].sum().reset_index()
+    
     return {
-        "labels": grouped['Vill_Name'].tolist(),
-        "values": grouped['Area'].round(3).tolist()
+        "labels": [r.vill_name for r in results],
+        "values": [round(float(r.total_area), 3) for r in results]
     }

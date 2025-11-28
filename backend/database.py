@@ -28,25 +28,44 @@ class Farm(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     farm_id = Column(String, unique=True, index=True)
-    name = Column(String)
-    village = Column(String, index=True)
-    division = Column(String)
-    supervisor = Column(String)
+    
+    # Division and village information
+    div_name = Column(String)
+    vill_cd = Column(Integer, index=True)
+    vill_name = Column(String, index=True)
+    vill_code = Column(Integer)
+    
+    # Farm details
+    supervisor_name = Column(String)
     farmer_name = Column(String)
+    father_name = Column(String)
+    plot_no = Column(Integer)
+    gashti_no = Column(Integer)
+    survey_date = Column(String)  # Stored as string to match source data format
     area = Column(Float)
+    shar = Column(Integer)
+    varieties = Column(String)
     crop_type = Column(String)
+    
+    # Boundary measurements
+    east = Column(Integer)
+    west = Column(Integer)
+    north = Column(Integer)
+    south = Column(Integer)
+    wkt = Column(String)  # Original WKT string
     
     # Geometry stored as PostGIS POLYGON
     geometry = Column(Geometry('POLYGON', srid=4326))
     
     # NDVI data
+    recent_date = Column(String)
     recent_ndvi = Column(Float)
+    prev_date = Column(String)
     prev_ndvi = Column(Float)
-    ndvi_delta = Column(Float)
-    harvest = Column(Integer, default=0)
+    delta = Column(Float)
+    harvest_flag = Column(Integer, default=0)
     
     # Timestamps
-    survey_date = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

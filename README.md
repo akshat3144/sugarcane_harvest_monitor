@@ -39,26 +39,27 @@ Sugarcane Harvest Monitor is a web application for visualizing, analyzing, and m
 ## Architecture
 
 - **Frontend:** React, TypeScript, Tailwind CSS, Recharts
-- **Backend:** FastAPI, Python, GeoPandas, Google Earth Engine (via `ee` Python API)
-- **Data:** CSV, GeoJSON, NDVI CSV
+- **Backend:** FastAPI, Python, SQLAlchemy, GeoPandas, Google Earth Engine (via `ee` Python API)
+- **Database:** PostgreSQL with PostGIS extension for spatial data
+- **Data Processing:** CSV, GeoJSON, NDVI CSV
 
 ## Folder Structure
 
 ```
 ├── backend/
 │   ├── main.py           # FastAPI entrypoint
-│   ├── models.py         # Data models
+│   ├── database.py       # Database models and PostGIS configuration
+│   ├── models.py         # Pydantic models
 │   ├── routers/          # API endpoints
 │   ├── services/         # Data processing scripts
-│   │   ├── ingest.py     # Full pipeline logic
+│   │   ├── ingest.py     # Full pipeline logic (saves to PostGIS)
 │   │   ├── ndvi_extraction.py # NDVI extraction (GEE)
 │   │   └── merge_ndvi_and_harvest.py # Merging logic
-│   └── ...
-├── data/                 # Uploaded and processed data
-│   ├── farms.geojson
-│   ├── farms_final.geojson
-│   ├── ndvi_recent_prev.csv
-│   └── ...
+│   ├── migrate_to_postgis.py  # Migration script
+│   ├── setup_postgis.py       # Setup wizard
+│   └── test_postgis.py        # Test suite
+├── data/                 # Optional: backup data files
+│   └── farms_final.geojson
 ├── src/                  # Frontend React app
 │   ├── pages/
 │   ├── components/
@@ -66,6 +67,8 @@ Sugarcane Harvest Monitor is a web application for visualizing, analyzing, and m
 ├── public/
 ├── requirements.txt      # Python dependencies
 ├── package.json
+├── POSTGIS_MIGRATION.md  # Full migration guide
+├── QUICK_START.md        # Quick reference
 ├── README.md
 └── ...
 ```
@@ -104,16 +107,52 @@ CORS_ORIGINS=http://localhost:8080,http://localhost:5173
 ### Backend Setup
 
 1. Install Python dependencies (from the project root):
+
    ```sh
    pip install -r requirements.txt
    ```
-2. Set up Google Earth Engine credentials:
+
+2. Set up PostgreSQL with PostGIS:
+
+   ```sh
+   # Install PostgreSQL and PostGIS (if not installed)
+   # Then create your database
+   createdb cnh
+   ```
+
+3. Run the PostGIS setup wizard:
+
+   ```sh
+   cd backend
+   python setup_postgis.py
+   ```
+
+   This will:
+
+   - Check database connection
+   - Install PostGIS extension
+   - Create tables
+   - Migrate existing data (if available)
+
+4. Set up Google Earth Engine credentials:
+
    - Set the environment variable `EE_PROJECT_ID` to your GEE project.
    - Authenticate with GEE as needed.
-3. **Run the backend from the project root:**
+
+5. **Run the backend from the project root:**
+
    ```sh
    uvicorn backend.main:app --reload
    ```
+
+6. **Test the migration (optional):**
+   ```sh
+   cd backend
+   python test_postgis.py
+   ```
+
+> 📖 For detailed migration information, see [POSTGIS_MIGRATION.md](POSTGIS_MIGRATION.md)  
+> 🚀 For quick start guide, see [QUICK_START.md](QUICK_START.md)
 
 ### Frontend Setup
 
@@ -126,10 +165,14 @@ CORS_ORIGINS=http://localhost:8080,http://localhost:5173
 ## Backend Details
 
 - **main.py:** FastAPI app, includes routers for upload, farms, NDVI, etc.
-- **services/ingest.py:** Orchestrates the full data pipeline: CSV → GeoJSON → NDVI extraction → merge → harvest flag → final GeoJSON.
+- **database.py:** SQLAlchemy models with PostGIS geometry support. Handles all database operations.
+- **services/ingest.py:** Orchestrates the full data pipeline: CSV → GeoJSON → NDVI extraction → merge → harvest flag → **PostGIS database**.
 - **services/ndvi_extraction.py:** Uses Google Earth Engine to compute NDVI for each farm polygon over two time windows (recent and previous), outputs per-farm NDVI metrics.
 - **services/merge_ndvi_and_harvest.py:** Merges NDVI results with farm polygons and computes harvest flags.
-- **routers/upload.py:** Handles CSV uploads, triggers the pipeline, and ensures old data is overwritten.
+- **routers/upload.py:** Handles CSV uploads, triggers the pipeline, saves to PostGIS database.
+- **routers/farms.py:** Query farms from database with spatial filtering support.
+- **routers/stats.py:** Aggregate statistics using SQL queries.
+- **routers/charts\_\*.py:** Chart data endpoints using database aggregations.
 
 ## NDVI Extraction Pipeline
 
@@ -152,16 +195,42 @@ CORS_ORIGINS=http://localhost:8080,http://localhost:5173
 ## Data Flow
 
 ```
-CSV Upload → CSV to GeoJSON → NDVI Extraction (GEE) → Merge → Harvest Flag → GeoJSON → Dashboard/API
+CSV Upload → CSV to GeoJSON → NDVI Extraction (GEE) → Merge → Harvest Flag → PostGIS Database → Dashboard/API
+                                                                                      ↓
+                                                                            (Optional: GeoJSON backup)
 ```
+
+**Key Improvement:** All data is now stored in PostgreSQL with PostGIS for:
+
+- ⚡ Faster queries with spatial indexing
+- 🚀 Scalable to millions of records
+- 🔄 Concurrent access without file locks
+- 💾 ACID transactions and data integrity
+- 📦 Deployment without data files
 
 ## API Endpoints
 
-- `POST /upload-csv` — Upload a new farm CSV (overwrites old data)
-- `GET /farms` — List all farms (from final GeoJSON)
-- `GET /farms/{farm_id}` — Get details for a specific farm
-- `GET /jobs/{job_id}` — Check status of a background job
-- Additional endpoints for NDVI, stats, and charts
+### Data Upload
+
+- `POST /api/upload-csv` — Upload a new farm CSV (saves to database)
+- `GET /api/jobs/{job_id}` — Check status of a background processing job
+
+### Farm Data
+
+- `GET /api/farms` — List all farms with optional filters
+  - Query params: `village`, `bbox`, `page`, `page_size`
+- `GET /api/farms/{farm_id}` — Get details for a specific farm
+
+### Statistics & Analytics
+
+- `GET /api/stats/summary` — Get dashboard statistics
+  - Query params: `village`
+- `GET /api/charts/ndvi-by-village` — Average NDVI by village
+- `GET /api/charts/harvest-area-timeline` — Harvest-ready area by village
+- `GET /api/harvest_chart/harvest-area-timeline` — Harvest metrics
+  - Query params: `metric` (area/count/percent)
+
+All endpoints now query the PostGIS database for real-time data access.
 
 ## Customization
 

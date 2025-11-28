@@ -1,17 +1,20 @@
 from typing import List, Tuple, Optional
 import os
+from backend.database import SessionLocal, Farm
+from geoalchemy2.shape import from_shape
 
-def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_geojson_path: str, log_path: Optional[str] = None) -> Tuple[int, int]:
+def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_geojson_path: Optional[str] = None, log_path: Optional[str] = None) -> Tuple[int, int]:
     """
-    Full pipeline: CSV -> GeoJSON -> NDVI extraction -> Merge -> Harvest flag -> Final GeoJSON
-    1. Convert CSV to GeoJSON (polygons)
+    Full pipeline: CSV -> Database (PostGIS)
+    1. Convert CSV to GeoJSON (polygons, temporary)
     2. Call NDVI extraction (external script)
     3. Merge NDVI results
     4. Apply harvest flag
-    5. Save final GeoJSON
+    5. Save to PostGIS database
+    All data is now stored in PostgreSQL/PostGIS - no file dependencies
     """
     import subprocess
-    # Step 1: CSV to GeoJSON
+    # Step 1: CSV to GeoJSON (temporary)
     n_ok, n_rej = csv_to_geojson(csv_path, geojson_path, log_path)
 
     # Step 2: NDVI extraction (call external script)
@@ -39,12 +42,79 @@ def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_ge
     # Step 4: Apply harvest flag
     merged["harvest_flag"] = ((merged["recent_ndvi"] < 0.5) & (merged["recent_ndvi"] < merged["prev_ndvi"])).astype(int)
 
-    # Step 5: Save final GeoJSON
-    merged.to_file(final_geojson_path, driver="GeoJSON")
-
-    if log_path:
-        with open(log_path, 'a') as f:
-            f.write(f"Merged and saved: {final_geojson_path}\n")
+    # Step 5: Save to PostGIS database
+    db = SessionLocal()
+    try:
+        # Clear all existing data (like the old file deletion behavior)
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write("Clearing existing farm data from database...\n")
+        
+        deleted_count = db.query(Farm).delete()
+        db.commit()
+        
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write(f"Deleted {deleted_count} existing farms\n")
+        
+        # Insert new data
+        saved_count = 0
+        for idx, row in merged.iterrows():
+            farm_id = str(row['farm_id'])
+            
+            # Create new farm (no need to check for existing since we cleared all)
+            farm = Farm(
+                farm_id=farm_id,
+                div_name=row.get('Div_Name'),
+                vill_cd=row.get('Vill_Cd'),
+                vill_name=row.get('Vill_Name'),
+                vill_code=row.get('Vill_Code'),
+                supervisor_name=row.get('Supervisor Name'),
+                farmer_name=row.get('Farmer_Name'),
+                father_name=row.get('Father_Name'),
+                plot_no=row.get('Plot No'),
+                gashti_no=row.get('Gashti No.'),
+                survey_date=row.get('Survey Date'),
+                area=row.get('Area'),
+                shar=row.get('Shar'),
+                varieties=row.get('Varieties'),
+                crop_type=row.get('Crop Type'),
+                east=row.get('East'),
+                west=row.get('West'),
+                north=row.get('North'),
+                south=row.get('South'),
+                wkt=row.get('WKT'),
+                geometry=from_shape(row.geometry, srid=4326),
+                recent_date=row.get('recent_date'),
+                recent_ndvi=row.get('recent_ndvi'),
+                prev_date=row.get('prev_date'),
+                prev_ndvi=row.get('prev_ndvi'),
+                delta=row.get('delta'),
+                harvest_flag=int(row.get('harvest_flag', 0))
+            )
+            db.add(farm)
+            
+            saved_count += 1
+            
+            # Commit in batches
+            if saved_count % 50 == 0:
+                db.commit()
+        
+        db.commit()
+        
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write(f"Saved {saved_count} farms to PostGIS database\n")
+        
+    except Exception as e:
+        db.rollback()
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write(f"Error saving to database: {e}\n")
+        raise
+    finally:
+        db.close()
+    
     return n_ok, n_rej
 import pandas as pd
 import geopandas as gpd

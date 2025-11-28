@@ -21,29 +21,31 @@ def upload_csv(file: UploadFile = File(...)):
     return {"job_id": job_id}
 
 def run_ingest_job(job, file_path):
-    geojson_path = os.path.join(UPLOAD_DIR, 'farms.geojson')
-    ndvi_csv_path = os.path.join(UPLOAD_DIR, 'ndvi_recent_prev.csv')
-    final_geojson_path = os.path.join(UPLOAD_DIR, 'farms_final.geojson')
+    # Temporary processing files
+    geojson_path = os.path.join(UPLOAD_DIR, 'farms_temp.geojson')
+    ndvi_csv_path = os.path.join(UPLOAD_DIR, 'ndvi_temp.csv')
     log_path = os.path.join(UPLOAD_DIR, 'ingest.log')
-
-    # Remove old files if they exist
-    for f in [geojson_path, ndvi_csv_path, final_geojson_path, log_path]:
-        try:
-            if os.path.exists(f):
-                os.remove(f)
-        except Exception as e:
-            pass  # Ignore errors in cleanup
 
     try:
         n_ok, n_rej = ingest.full_pipeline(
             file_path,
             geojson_path,
             ndvi_csv_path,
-            final_geojson_path,
+            None,  # No final geojson needed
             log_path
         )
         job.log(f"Rows processed: {n_ok}, rejected: {n_rej}")
-        return final_geojson_path
+        job.log(f"Data saved to PostGIS database")
+        
+        # Clean up temporary files
+        for temp_file in [file_path, geojson_path, ndvi_csv_path]:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+            except Exception:
+                pass
+        
+        return "Database updated successfully"
     except Exception as e:
         job.log(str(e))
         raise

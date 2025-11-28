@@ -2,17 +2,28 @@
 Statistics and analytics endpoints
 """
 
-from fastapi import APIRouter, Query
-import geopandas as gpd
-import os
+from fastapi import APIRouter, Query, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from backend.database import get_db, Farm
 
 router = APIRouter()
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), '../../data/farms_final.geojson')
 
 @router.get("/summary")
-def stats_summary(village: str = Query(None)):
-    """Get dashboard stats from GeoJSON"""
-    if not os.path.exists(GEOJSON_PATH):
+def stats_summary(village: str = Query(None), db: Session = Depends(get_db)):
+    """Get dashboard stats from PostGIS database"""
+    
+    # Base query
+    query = db.query(Farm)
+    
+    # Filter by village if specified
+    if village and village.lower() != "all":
+        query = query.filter(func.lower(Farm.vill_name) == village.lower())
+    
+    # Get total farms
+    total_farms = query.count()
+    
+    if total_farms == 0:
         return {
             "total_farms": 0,
             "harvest_ready_count": 0,
@@ -22,28 +33,42 @@ def stats_summary(village: str = Query(None)):
             "total_area": 0,
             "total_harvest_area": 0
         }
-    gdf = gpd.read_file(GEOJSON_PATH)
-    if village and village.lower() != "all":
-        gdf = gdf[gdf['Vill_Name'].str.lower() == village.lower()]
-    total_farms = len(gdf)
-    if 'harvest_flag' in gdf:
-        harvest_ready = gdf.loc[gdf['harvest_flag'] == 1]
-        harvest_ready_count = len(harvest_ready)
-    else:
-        harvest_ready = gdf.iloc[0:0]  # empty DataFrame
-        harvest_ready_count = 0
-    avg_ndvi = gdf['recent_ndvi'].mean() if 'recent_ndvi' in gdf else 0
-    avg_ndvi_change = (gdf['recent_ndvi'] - gdf['prev_ndvi']).mean() if 'recent_ndvi' in gdf and 'prev_ndvi' in gdf else 0
-    total_area = gdf['Area'].sum() if 'Area' in gdf else 0
-    total_harvest_area = harvest_ready['Area'].sum() if 'Area' in gdf and not harvest_ready.empty else 0
+    
+    # Get harvest ready count
+    harvest_ready_count = query.filter(Farm.harvest_flag == 1).count()
+    
+    # Get average NDVI
+    avg_ndvi_result = query.with_entities(
+        func.avg(Farm.recent_ndvi)
+    ).filter(Farm.recent_ndvi.isnot(None)).scalar()
+    avg_ndvi = float(avg_ndvi_result) if avg_ndvi_result else 0
+    
+    # Get average NDVI change
+    avg_ndvi_change_result = query.with_entities(
+        func.avg(Farm.delta)
+    ).filter(Farm.delta.isnot(None)).scalar()
+    avg_ndvi_change = float(avg_ndvi_change_result) if avg_ndvi_change_result else 0
+    
+    # Get total area
+    total_area_result = query.with_entities(
+        func.sum(Farm.area)
+    ).scalar()
+    total_area = float(total_area_result) if total_area_result else 0
+    
+    # Get total harvest area
+    total_harvest_area_result = query.filter(Farm.harvest_flag == 1).with_entities(
+        func.sum(Farm.area)
+    ).scalar()
+    total_harvest_area = float(total_harvest_area_result) if total_harvest_area_result else 0
+    
     return {
         "total_farms": total_farms,
         "harvest_ready_count": harvest_ready_count,
         "harvest_ready_percentage": (harvest_ready_count / total_farms * 100) if total_farms else 0,
-        "avg_ndvi": avg_ndvi or 0,
-        "avg_ndvi_change": avg_ndvi_change or 0,
-        "total_area": total_area or 0,
-        "total_harvest_area": total_harvest_area or 0
+        "avg_ndvi": round(avg_ndvi, 3),
+        "avg_ndvi_change": round(avg_ndvi_change, 3),
+        "total_area": round(total_area, 3),
+        "total_harvest_area": round(total_harvest_area, 3)
     }
 
 

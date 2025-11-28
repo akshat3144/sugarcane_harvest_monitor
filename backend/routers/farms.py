@@ -3,57 +3,94 @@
 Farm management endpoints
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from sqlalchemy.orm import Session
 from typing import Optional
-import os
+from geoalchemy2.functions import ST_AsGeoJSON, ST_Intersects, ST_MakeEnvelope
+from backend.database import get_db, Farm
 import json
 
 router = APIRouter()
 
-GEOJSON_PATH = os.path.join(os.path.dirname(__file__), '../../data/farms_final.geojson')
-
-# --- Only GeoJSON endpoints below ---
+def farm_to_geojson_feature(farm: Farm, geom_json: str) -> dict:
+    """Convert a Farm model to GeoJSON feature"""
+    return {
+        "type": "Feature",
+        "geometry": json.loads(geom_json),
+        "properties": {
+            "farm_id": farm.farm_id,
+            "Div_Name": farm.div_name,
+            "Vill_Cd": farm.vill_cd,
+            "Vill_Name": farm.vill_name,
+            "Vill_Code": farm.vill_code,
+            "Supervisor Name": farm.supervisor_name,
+            "Farmer_Name": farm.farmer_name,
+            "Father_Name": farm.father_name,
+            "Plot No": farm.plot_no,
+            "Gashti No.": farm.gashti_no,
+            "Survey Date": farm.survey_date,
+            "Area": farm.area,
+            "Shar": farm.shar,
+            "Varieties": farm.varieties,
+            "Crop Type": farm.crop_type,
+            "East": farm.east,
+            "West": farm.west,
+            "North": farm.north,
+            "South": farm.south,
+            "WKT": farm.wkt,
+            "recent_date": farm.recent_date,
+            "recent_ndvi": farm.recent_ndvi,
+            "prev_date": farm.prev_date,
+            "prev_ndvi": farm.prev_ndvi,
+            "delta": farm.delta,
+            "harvest_flag": farm.harvest_flag
+        }
+    }
 
 @router.get("")
 def list_farms(
     bbox: Optional[str] = Query(None, description="Bounding box: minx,miny,maxx,maxy"),
     village: Optional[str] = Query(None),
     page: int = 1,
-    page_size: int = 50
+    page_size: int = 50,
+    db: Session = Depends(get_db)
 ):
-    if not os.path.exists(GEOJSON_PATH):
-        raise HTTPException(status_code=404, detail="No data available.")
-    with open(GEOJSON_PATH, 'r', encoding='utf-8') as f:
-        geojson = json.load(f)
-    features = geojson.get('features', [])
-
-    features = geojson.get('features', [])
-    # Optionally filter by village
+    """Get list of farms with optional filters"""
+    query = db.query(Farm, ST_AsGeoJSON(Farm.geometry).label('geom_json'))
+    
+    # Filter by village
     if village:
-        features = [feat for feat in features if feat['properties'].get('Vill_Name') == village]
-    # Optionally filter by bbox
+        query = query.filter(Farm.vill_name == village)
+    
+    # Filter by bounding box
     if bbox:
-        minx, miny, maxx, maxy = map(float, bbox.split(','))
-        def in_bbox(feat):
-            coords = feat['geometry']['coordinates'][0]
-            return any(minx <= lon <= maxx and miny <= lat <= maxy for lon, lat in coords)
-        features = [feat for feat in features if in_bbox(feat)]
+        try:
+            minx, miny, maxx, maxy = map(float, bbox.split(','))
+            bbox_geom = ST_MakeEnvelope(minx, miny, maxx, maxy, 4326)
+            query = query.filter(ST_Intersects(Farm.geometry, bbox_geom))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid bbox format. Use: minx,miny,maxx,maxy")
+    
     # Pagination
-    start = (page - 1) * page_size
-    end = start + page_size
+    offset = (page - 1) * page_size
+    results = query.offset(offset).limit(page_size).all()
+    
+    features = [farm_to_geojson_feature(farm, geom_json) for farm, geom_json in results]
+    
     return {
         "type": "FeatureCollection",
-        "features": features[start:end]
+        "features": features
     }
 
 @router.get("/{farm_id}")
-def get_farm(farm_id: str):
-    if not os.path.exists(GEOJSON_PATH):
-        raise HTTPException(status_code=404, detail="No data available.")
-    with open(GEOJSON_PATH, 'r', encoding='utf-8') as f:
-        geojson = json.load(f)
-    features = geojson.get('features', [])
-    for feat in features:
-        if feat['properties'].get('farm_id') == farm_id:
-            return feat
-    raise HTTPException(status_code=404, detail="Farm not found.")
+def get_farm(farm_id: str, db: Session = Depends(get_db)):
+    """Get a single farm by ID"""
+    result = db.query(Farm, ST_AsGeoJSON(Farm.geometry).label('geom_json')).filter(
+        Farm.farm_id == farm_id
+    ).first()
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Farm not found.")
+    
+    farm, geom_json = result
+    return farm_to_geojson_feature(farm, geom_json)
