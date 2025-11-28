@@ -22,7 +22,9 @@ const CsvUpload: React.FC<CsvUploadProps> = ({ onUploadComplete }) => {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await fetch("/api/upload-csv", {
+      const API_BASE_URL =
+        import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+      const res = await fetch(`${API_BASE_URL}/upload-csv`, {
         method: "POST",
         body: formData,
       });
@@ -39,10 +41,12 @@ const CsvUpload: React.FC<CsvUploadProps> = ({ onUploadComplete }) => {
   };
 
   const pollJobStatus = async (jobId: string) => {
+    const API_BASE_URL =
+      import.meta.env.VITE_API_URL || "http://localhost:8000/api";
     let done = false;
     while (!done) {
       await new Promise((r) => setTimeout(r, 1500));
-      const res = await fetch(`/api/jobs/${jobId}`);
+      const res = await fetch(`${API_BASE_URL}/jobs/${jobId}`);
       const data = await res.json();
       setStatus(data.status);
       setLogs(data.logs || []);

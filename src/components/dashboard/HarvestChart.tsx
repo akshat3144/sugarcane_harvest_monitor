@@ -25,8 +25,12 @@ export const HarvestChart = ({ refreshKey }: HarvestChartProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const API_BASE_URL =
+      import.meta.env.VITE_API_URL || "http://localhost:8000/api";
     setLoading(true);
-    fetch(`/api/harvest_chart/harvest-area-timeline?metric=${metric}`)
+    fetch(
+      `${API_BASE_URL}/harvest_chart/harvest-area-timeline?metric=${metric}`
+    )
       .then((res) => res.json())
       .then((chart) => {
         setData(
