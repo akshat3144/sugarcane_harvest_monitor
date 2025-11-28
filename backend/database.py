@@ -2,7 +2,7 @@
 Database configuration and session management
 Using PostgreSQL with PostGIS extension for geospatial data
 """
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from geoalchemy2 import Geometry
@@ -79,7 +79,19 @@ def get_db():
 
 # Initialize database
 def init_db():
-    """Create all tables"""
+    """Create all tables and enable PostGIS extension"""
+    try:
+        # Enable PostGIS extension
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis_topology;"))
+            conn.commit()
+            print("PostGIS extensions enabled")
+    except Exception as e:
+        print(f"PostGIS extension setup: {e}")
+        # Continue anyway - extension might already exist or user lacks permissions
+    
+    # Create all tables
     Base.metadata.create_all(bind=engine)
 
 # Utility function to convert coordinates to WKT
