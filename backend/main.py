@@ -9,13 +9,13 @@ import pandas as pd
 from datetime import datetime
 import os
 
-from backend.routers import upload
-from backend.routers import farms
-from backend.routers import stats
-from backend.routers import charts_geojson as charts
-from backend.routers import harvest_chart_api as harvest_chart
-from backend.models import FarmCreate, FarmResponse, NDVIData, StatsResponse
-from backend.database import init_db
+from routers import upload
+from routers import farms
+from routers import stats
+from routers import charts_geojson as charts
+from routers import harvest_chart_api as harvest_chart
+from models import FarmCreate, FarmResponse, NDVIData, StatsResponse
+from database import init_db
 
 # Initialize FastAPI app
 app = FastAPI(
