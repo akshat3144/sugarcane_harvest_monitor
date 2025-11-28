@@ -22,14 +22,44 @@ def full_pipeline(csv_path: str, geojson_path: str, ndvi_csv_path: str, final_ge
         ndvi_script = os.path.join(os.path.dirname(__file__), 'ndvi_extraction.py')
         if not os.path.exists(ndvi_script):
             raise FileNotFoundError(f"NDVI extraction script not found: {ndvi_script}")
-        result = subprocess.run([
-            "python", ndvi_script, csv_path, ndvi_csv_path
-        ], capture_output=True, text=True)
-        if result.returncode != 0:
-            raise RuntimeError(f"NDVI extraction failed: {result.stderr}")
+        
+        # Log the command being executed
         if log_path:
             with open(log_path, 'a') as f:
-                f.write(f"NDVI extraction output:\n{result.stdout}\n")
+                f.write(f"Running NDVI extraction script: {ndvi_script}\n")
+                f.write(f"Input CSV: {csv_path}\n")
+                f.write(f"Output CSV: {ndvi_csv_path}\n")
+        
+        # Check if EE_PROJECT_ID is set
+        ee_project = os.environ.get("EE_PROJECT_ID")
+        if not ee_project:
+            error_msg = "EE_PROJECT_ID environment variable is not set. Earth Engine authentication required."
+            if log_path:
+                with open(log_path, 'a') as f:
+                    f.write(f"ERROR: {error_msg}\n")
+            raise RuntimeError(error_msg)
+        
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write(f"EE_PROJECT_ID: {ee_project}\n")
+        
+        # Run the NDVI extraction script
+        result = subprocess.run([
+            "python", ndvi_script, csv_path, ndvi_csv_path
+        ], capture_output=True, text=True, env=os.environ.copy())
+        
+        # Log the results
+        if log_path:
+            with open(log_path, 'a') as f:
+                f.write(f"\nNDVI extraction return code: {result.returncode}\n")
+                if result.stdout:
+                    f.write(f"NDVI extraction stdout:\n{result.stdout}\n")
+                if result.stderr:
+                    f.write(f"NDVI extraction stderr:\n{result.stderr}\n")
+        
+        if result.returncode != 0:
+            error_detail = result.stderr if result.stderr else "No error details available"
+            raise RuntimeError(f"NDVI extraction failed with code {result.returncode}: {error_detail}")
 
     # Step 3: Merge NDVI results
     gdf = gpd.read_file(geojson_path)

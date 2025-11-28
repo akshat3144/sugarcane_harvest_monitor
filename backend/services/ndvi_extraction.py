@@ -16,10 +16,18 @@ output_csv = sys.argv[2]
 
 # Initialize Earth Engine
 project_id = os.environ.get("EE_PROJECT_ID")
+if not project_id:
+    print(f"ERROR: EE_PROJECT_ID environment variable is not set", file=sys.stderr)
+    print(f"Please set the EE_PROJECT_ID environment variable to your Earth Engine project ID", file=sys.stderr)
+    sys.exit(1)
+
+print(f"Initializing Earth Engine with project: {project_id}")
 try:
     ee.Initialize(project=project_id)
+    print(f"Earth Engine initialized successfully")
 except Exception as e:
-    print(f"Earth Engine init failed: {e}")
+    print(f"ERROR: Earth Engine initialization failed: {e}", file=sys.stderr)
+    print(f"Please ensure you are authenticated with Earth Engine", file=sys.stderr)
     sys.exit(1)
 
 def mask_s2_clouds(image):
@@ -106,10 +114,18 @@ def process_chunk(chunk, thread_id, output_csv):
     return local_count
 
 def main():
-    df = pd.read_csv(input_csv)
+    print(f"Reading input CSV: {input_csv}")
+    try:
+        df = pd.read_csv(input_csv)
+        print(f"Loaded {len(df)} rows from CSV")
+    except Exception as e:
+        print(f"ERROR: Failed to read CSV file: {e}", file=sys.stderr)
+        sys.exit(1)
+    
     if not os.path.exists(output_csv):
         with open(output_csv, "w") as f:
             f.write("farm_id,recent_date,recent_ndvi,prev_date,prev_ndvi,delta\n")
+        print(f"Created output CSV: {output_csv}")
     num_threads = 10
     chunks = np.array_split(df, num_threads)
     import time

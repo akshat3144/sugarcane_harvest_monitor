@@ -27,6 +27,9 @@ def run_ingest_job(job, file_path):
     log_path = os.path.join(UPLOAD_DIR, 'ingest.log')
 
     try:
+        job.log("Starting data ingestion pipeline")
+        job.log(f"Processing file: {file_path}")
+        
         n_ok, n_rej = ingest.full_pipeline(
             file_path,
             geojson_path,
@@ -36,6 +39,16 @@ def run_ingest_job(job, file_path):
         )
         job.log(f"Rows processed: {n_ok}, rejected: {n_rej}")
         job.log(f"Data saved to PostGIS database")
+        
+        # Read and append the ingest log to job logs
+        if os.path.exists(log_path):
+            with open(log_path, 'r') as f:
+                log_content = f.read()
+                if log_content:
+                    job.log("Detailed processing log:")
+                    for line in log_content.split('\n'):
+                        if line.strip():
+                            job.log(line)
         
         # Clean up temporary files
         for temp_file in [file_path, geojson_path, ndvi_csv_path]:
@@ -47,7 +60,20 @@ def run_ingest_job(job, file_path):
         
         return "Database updated successfully"
     except Exception as e:
-        job.log(str(e))
+        job.log(f"ERROR: {str(e)}")
+        
+        # Try to read the log file for more details
+        if os.path.exists(log_path):
+            try:
+                with open(log_path, 'r') as f:
+                    log_content = f.read()
+                    if log_content:
+                        job.log("Error details from log:")
+                        for line in log_content.split('\n'):
+                            if line.strip():
+                                job.log(line)
+            except Exception:
+                pass
         raise
 
 @router.get("/jobs/{job_id}")
