@@ -25,5 +25,18 @@ dist-ssr
 backend/__pycache__/
 backend/services/__pycache__/
 backend/routers/__pycache__/
-.*env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.env
+.env
+.env.local
+.env.*.local
 data/
+*.db
+*.sqlite3
+
+# Render
+.render/

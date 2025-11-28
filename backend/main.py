@@ -30,8 +30,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",
         "http://localhost:5173",
-        "https://lovableproject.com",
-        "https://*.lovableproject.com"
+        os.getenv("FRONTEND_URL", "")
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -68,10 +67,11 @@ app.include_router(harvest_chart.router, prefix="/api/harvest_chart", tags=["Har
 
 if __name__ == "__main__":
     import uvicorn
+    port = int(os.getenv("PORT", 8000))
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=True,
         log_level="info"
     )
