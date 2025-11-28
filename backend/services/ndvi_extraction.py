@@ -22,12 +22,41 @@ if not project_id:
     sys.exit(1)
 
 print(f"Initializing Earth Engine with project: {project_id}")
+
+# Try service account authentication first (for production/Render)
+service_account_key = os.environ.get("EE_SERVICE_ACCOUNT_KEY")
+service_account_email = os.environ.get("EE_SERVICE_ACCOUNT")
+
 try:
-    ee.Initialize(project=project_id)
-    print(f"Earth Engine initialized successfully")
+    if service_account_key and service_account_email:
+        # Service account authentication (production)
+        print(f"Authenticating with service account: {service_account_email}")
+        import json
+        import tempfile
+        
+        # Write the service account key to a temporary file
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            f.write(service_account_key)
+            key_file = f.name
+        
+        try:
+            credentials = ee.ServiceAccountCredentials(service_account_email, key_file)
+            ee.Initialize(credentials, project=project_id)
+            print(f"Earth Engine initialized successfully with service account")
+        finally:
+            # Clean up the temporary key file
+            if os.path.exists(key_file):
+                os.remove(key_file)
+    else:
+        # Default authentication (local development)
+        print("Using default Earth Engine authentication")
+        ee.Initialize(project=project_id)
+        print(f"Earth Engine initialized successfully")
 except Exception as e:
     print(f"ERROR: Earth Engine initialization failed: {e}", file=sys.stderr)
-    print(f"Please ensure you are authenticated with Earth Engine", file=sys.stderr)
+    if not service_account_key or not service_account_email:
+        print(f"HINT: For production deployment, set EE_SERVICE_ACCOUNT and EE_SERVICE_ACCOUNT_KEY environment variables", file=sys.stderr)
+        print(f"For local development, run 'earthengine authenticate' first", file=sys.stderr)
     sys.exit(1)
 
 def mask_s2_clouds(image):
