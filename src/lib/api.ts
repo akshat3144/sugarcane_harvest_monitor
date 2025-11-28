@@ -34,14 +34,27 @@ export interface ChartData {
 }
 
 /**
- * Fetch all farms as GeoJSON
+ * Fetch farms as GeoJSON with viewport and pagination support
  */
-export const fetchFarmsGeoJSON = async (village?: string) => {
+export const fetchFarmsGeoJSON = async (
+  village?: string,
+  bbox?: string,
+  zoom?: number,
+  page: number = 1,
+  pageSize: number = 100
+) => {
   const url = new URL(`${API_BASE_URL}/farms`);
   if (village) {
     url.searchParams.append("village", village);
   }
-  url.searchParams.append("page_size", "5000"); // Always fetch all farms
+  if (bbox) {
+    url.searchParams.append("bbox", bbox);
+  }
+  if (zoom !== undefined) {
+    url.searchParams.append("zoom", zoom.toString());
+  }
+  url.searchParams.append("page", page.toString());
+  url.searchParams.append("page_size", pageSize.toString());
 
   const response = await fetch(url.toString());
   if (!response.ok) {

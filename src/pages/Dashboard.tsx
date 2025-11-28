@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { LatLngExpression } from "leaflet";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -34,14 +34,87 @@ const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [currentBbox, setCurrentBbox] = useState<string | undefined>(undefined);
+  const [currentZoom, setCurrentZoom] = useState<number>(13);
+  const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set());
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  useEffect(() => {
-    const loadFarms = async () => {
-      setLoading(true);
-      try {
-        const geojson = await fetchFarmsGeoJSON(
-          selectedVillage !== "all" ? selectedVillage : undefined
+  // Load initial subset of farms without bbox to get starting location
+  const loadInitialFarms = async () => {
+    setLoading(true);
+    try {
+      const geojson = await fetchFarmsGeoJSON(
+        selectedVillage !== "all" ? selectedVillage : undefined,
+        undefined, // No bbox filter for initial load
+        undefined,
+        1,
+        50 // Start with just 50 farms
+      );
+
+      // Parse GeoJSON features into FarmMap format
+      const parsed = geojson.features.map((f: any) => {
+        const coords = f.geometry.coordinates[0].map(
+          (c: number[]) => [c[1], c[0]] as LatLngExpression
         );
+        return {
+          id: f.properties.farm_id || f.properties.id,
+          name:
+            f.properties.Farmer_Name ||
+            f.properties.name ||
+            f.properties.farm_id,
+          village: f.properties.Vill_Name || f.properties.village,
+          area: f.properties.Area || f.properties.area,
+          recentNDVI: f.properties.recent_ndvi || f.properties.recentNDVI || 0,
+          prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
+          harvest: f.properties.harvest_flag || f.properties.harvest || 0,
+          bounds: coords,
+        };
+      });
+
+      setFarms(parsed);
+      setInitialLoadDone(true);
+    } catch (err) {
+      console.error("Failed to load initial farms:", err);
+      setFarms([]);
+    }
+    setLoading(false);
+  };
+
+  // Progressive loading function
+  const loadFarmsForViewport = async (
+    bbox?: string,
+    zoom?: number,
+    reset: boolean = false
+  ) => {
+    if (!bbox || !initialLoadDone) return;
+
+    if (reset) {
+      setLoadedPages(new Set());
+      setFarms([]);
+    }
+
+    setLoading(true);
+    try {
+      // Load first page or subsequent pages
+      let page = 1;
+      let allFarms: any[] = reset ? [] : [...farms];
+      let hasMore = true;
+
+      while (hasMore && page <= 3) {
+        // Load up to 3 pages progressively
+        if (loadedPages.has(page) && !reset) {
+          page++;
+          continue;
+        }
+
+        const geojson = await fetchFarmsGeoJSON(
+          selectedVillage !== "all" ? selectedVillage : undefined,
+          bbox,
+          zoom,
+          page,
+          100
+        );
+
         // Parse GeoJSON features into FarmMap format
         const parsed = geojson.features.map((f: any) => {
           const coords = f.geometry.coordinates[0].map(
@@ -62,14 +135,49 @@ const Dashboard = () => {
             bounds: coords,
           };
         });
-        setFarms(parsed);
-      } catch (err) {
+
+        // Deduplicate by farm id
+        const existingIds = new Set(allFarms.map((f) => f.id));
+        const newFarms = parsed.filter((f: any) => !existingIds.has(f.id));
+        allFarms = [...allFarms, ...newFarms];
+
+        setLoadedPages((prev) => new Set([...prev, page]));
+
+        hasMore = geojson.metadata && page < geojson.metadata.total_pages;
+        page++;
+      }
+
+      setFarms(allFarms);
+    } catch (err) {
+      console.error("Failed to load farms:", err);
+      if (reset) {
         setFarms([]);
       }
-      setLoading(false);
-    };
-    loadFarms();
+    }
+    setLoading(false);
+  };
+
+  // Handle viewport changes with debouncing
+  const handleViewportChange = useCallback((bbox: string, zoom: number) => {
+    setCurrentBbox(bbox);
+    setCurrentZoom(zoom);
+  }, []);
+
+  // Load initial farms on mount or when refreshKey changes
+  useEffect(() => {
+    loadInitialFarms();
   }, [selectedVillage, refreshKey]);
+
+  // Load farms when viewport changes (only after initial load)
+  useEffect(() => {
+    if (currentBbox && initialLoadDone) {
+      const timeoutId = setTimeout(() => {
+        loadFarmsForViewport(currentBbox, currentZoom, true);
+      }, 500); // Debounce 500ms
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentBbox, currentZoom, selectedVillage, refreshKey, initialLoadDone]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -126,12 +234,30 @@ const Dashboard = () => {
         {/* Left Side - Map */}
         <div className="md:col-span-7 space-y-4 order-1 md:order-1">
           <Card className="h-[300px] md:h-[calc(100vh-200px)] overflow-hidden bg-dashboard-card border-dashboard-border">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                Loading farms...
+            <FarmMap
+              farms={farms}
+              getHealthColor={getHealthColor}
+              onViewportChange={handleViewportChange}
+              initialFitBounds={
+                !initialLoadDone || (farms.length > 0 && refreshKey === 0)
+              }
+            />
+            {loading && farms.length === 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  background: "rgba(30,41,59,0.9)",
+                  padding: "12px 24px",
+                  borderRadius: "8px",
+                  color: "white",
+                  zIndex: 1000,
+                }}
+              >
+                Loading initial farms...
               </div>
-            ) : (
-              <FarmMap farms={farms} getHealthColor={getHealthColor} />
             )}
           </Card>
           {/* Stats Row */}
