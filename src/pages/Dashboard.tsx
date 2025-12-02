@@ -38,6 +38,10 @@ const Dashboard = () => {
   const [currentZoom, setCurrentZoom] = useState<number>(13);
   const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set());
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const [loadedBboxes, setLoadedBboxes] = useState<Set<string>>(new Set());
+  const [allLoadedFarms, setAllLoadedFarms] = useState<Map<string, any>>(
+    new Map()
+  );
 
   // Load initial subset of farms without bbox to get starting location
   const loadInitialFarms = async () => {
@@ -80,7 +84,26 @@ const Dashboard = () => {
     setLoading(false);
   };
 
-  // Progressive loading function
+  // Check if bbox is significantly different (to avoid reload on tiny movements)
+  const isSignificantBboxChange = (
+    oldBbox: string,
+    newBbox: string
+  ): boolean => {
+    const [oldMinX, oldMinY, oldMaxX, oldMaxY] = oldBbox.split(",").map(Number);
+    const [newMinX, newMinY, newMaxX, newMaxY] = newBbox.split(",").map(Number);
+
+    const oldWidth = oldMaxX - oldMinX;
+    const oldHeight = oldMaxY - oldMinY;
+
+    // Consider significant if moved more than 30% of viewport size
+    const threshold = 0.3;
+    const xDiff = Math.abs(newMinX - oldMinX);
+    const yDiff = Math.abs(newMinY - oldMinY);
+
+    return xDiff > oldWidth * threshold || yDiff > oldHeight * threshold;
+  };
+
+  // Progressive loading function with caching
   const loadFarmsForViewport = async (
     bbox?: string,
     zoom?: number,
@@ -88,25 +111,35 @@ const Dashboard = () => {
   ) => {
     if (!bbox || !initialLoadDone) return;
 
+    // Check if we already loaded this bbox (within tolerance)
+    if (!reset && loadedBboxes.has(bbox)) {
+      console.log("Using cached data for this viewport");
+      return;
+    }
+
+    // Check if bbox change is significant enough to reload
+    if (!reset && loadedBboxes.size > 0) {
+      const lastBbox = Array.from(loadedBboxes).pop();
+      if (lastBbox && !isSignificantBboxChange(lastBbox, bbox)) {
+        console.log("Viewport change too small, skipping reload");
+        return;
+      }
+    }
+
     if (reset) {
       setLoadedPages(new Set());
-      setFarms([]);
+      setAllLoadedFarms(new Map());
+      setLoadedBboxes(new Set());
     }
 
     setLoading(true);
     try {
       // Load all pages for viewport
       let page = 1;
-      let allFarms: any[] = reset ? [] : [...farms];
+      const newFarmsMap = new Map(allLoadedFarms);
       let hasMore = true;
 
       while (hasMore) {
-        // Load ALL pages progressively (no limit)
-        if (loadedPages.has(page) && !reset) {
-          page++;
-          continue;
-        }
-
         const geojson = await fetchFarmsGeoJSON(
           selectedVillage !== "all" ? selectedVillage : undefined,
           bbox,
@@ -136,18 +169,18 @@ const Dashboard = () => {
           };
         });
 
-        // Deduplicate by farm id
-        const existingIds = new Set(allFarms.map((f) => f.id));
-        const newFarms = parsed.filter((f: any) => !existingIds.has(f.id));
-        allFarms = [...allFarms, ...newFarms];
-
-        setLoadedPages((prev) => new Set([...prev, page]));
+        // Add to map (automatically deduplicates by id)
+        parsed.forEach((farm: any) => {
+          newFarmsMap.set(farm.id, farm);
+        });
 
         hasMore = geojson.metadata && page < geojson.metadata.total_pages;
         page++;
       }
 
-      setFarms(allFarms);
+      setAllLoadedFarms(newFarmsMap);
+      setFarms(Array.from(newFarmsMap.values()));
+      setLoadedBboxes((prev) => new Set([...prev, bbox]));
     } catch (err) {
       console.error("Failed to load farms:", err);
       if (reset) {
@@ -172,8 +205,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (currentBbox && initialLoadDone) {
       const timeoutId = setTimeout(() => {
-        loadFarmsForViewport(currentBbox, currentZoom, true);
-      }, 500); // Debounce 500ms
+        loadFarmsForViewport(currentBbox, currentZoom, false);
+      }, 800); // Debounce 800ms (increased for better performance)
 
       return () => clearTimeout(timeoutId);
     }
