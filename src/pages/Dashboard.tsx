@@ -112,7 +112,7 @@ const Dashboard = () => {
           bbox,
           zoom,
           page,
-          100
+          1000
         );
 
         // Parse GeoJSON features into FarmMap format

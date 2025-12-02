@@ -53,7 +53,7 @@ def list_farms(
     village: Optional[str] = Query(None),
     zoom: Optional[int] = Query(None, description="Map zoom level for geometry simplification"),
     page: int = 1,
-    page_size: int = 100,
+    page_size: int = 1000,
     db: Session = Depends(get_db)
 ):
     """Get list of farms with optional filters and geometry simplification"""

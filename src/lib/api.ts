@@ -41,7 +41,7 @@ export const fetchFarmsGeoJSON = async (
   bbox?: string,
   zoom?: number,
   page: number = 1,
-  pageSize: number = 100
+  pageSize: number = 1000
 ) => {
   const url = new URL(`${API_BASE_URL}/farms`);
   if (village) {
