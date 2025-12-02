@@ -103,7 +103,7 @@ const Dashboard = () => {
     return xDiff > oldWidth * threshold || yDiff > oldHeight * threshold;
   };
 
-  // Progressive loading function with caching
+  // Progressive loading function with streaming updates
   const loadFarmsForViewport = async (
     bbox?: string,
     zoom?: number,
@@ -134,60 +134,93 @@ const Dashboard = () => {
 
     setLoading(true);
     try {
-      // Load all pages for viewport
-      let page = 1;
       const newFarmsMap = new Map(allLoadedFarms);
-      let hasMore = true;
 
-      while (hasMore) {
-        const geojson = await fetchFarmsGeoJSON(
-          selectedVillage !== "all" ? selectedVillage : undefined,
-          bbox,
-          zoom,
-          page,
-          1000
+      // Load first page immediately to show something fast
+      const firstPage = await fetchFarmsGeoJSON(
+        selectedVillage !== "all" ? selectedVillage : undefined,
+        bbox,
+        zoom,
+        1,
+        1000
+      );
+
+      // Parse and display first batch immediately
+      firstPage.features.forEach((f: any) => {
+        const coords = f.geometry.coordinates[0].map(
+          (c: number[]) => [c[1], c[0]] as LatLngExpression
         );
+        const farm = {
+          id: f.properties.farm_id || f.properties.id,
+          name:
+            f.properties.Farmer_Name ||
+            f.properties.name ||
+            f.properties.farm_id,
+          village: f.properties.Vill_Name || f.properties.village,
+          area: f.properties.Area || f.properties.area,
+          recentNDVI: f.properties.recent_ndvi || f.properties.recentNDVI || 0,
+          prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
+          harvest: f.properties.harvest_flag || f.properties.harvest || 0,
+          bounds: coords,
+        };
+        newFarmsMap.set(farm.id, farm);
+      });
 
-        // Parse GeoJSON features into FarmMap format
-        const parsed = geojson.features.map((f: any) => {
-          const coords = f.geometry.coordinates[0].map(
-            (c: number[]) => [c[1], c[0]] as LatLngExpression
+      // Update UI with first batch
+      setAllLoadedFarms(new Map(newFarmsMap));
+      setFarms(Array.from(newFarmsMap.values()));
+      setLoading(false);
+
+      // Load remaining pages in background (max 5 total pages = 5000 farms)
+      const totalPages = firstPage.metadata?.total_pages || 1;
+      const maxPages = Math.min(totalPages, 5); // Cap at 5 pages for performance
+
+      if (maxPages > 1) {
+        // Load remaining pages asynchronously
+        for (let page = 2; page <= maxPages; page++) {
+          const geojson = await fetchFarmsGeoJSON(
+            selectedVillage !== "all" ? selectedVillage : undefined,
+            bbox,
+            zoom,
+            page,
+            1000
           );
-          return {
-            id: f.properties.farm_id || f.properties.id,
-            name:
-              f.properties.Farmer_Name ||
-              f.properties.name ||
-              f.properties.farm_id,
-            village: f.properties.Vill_Name || f.properties.village,
-            area: f.properties.Area || f.properties.area,
-            recentNDVI:
-              f.properties.recent_ndvi || f.properties.recentNDVI || 0,
-            prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
-            harvest: f.properties.harvest_flag || f.properties.harvest || 0,
-            bounds: coords,
-          };
-        });
 
-        // Add to map (automatically deduplicates by id)
-        parsed.forEach((farm: any) => {
-          newFarmsMap.set(farm.id, farm);
-        });
+          geojson.features.forEach((f: any) => {
+            const coords = f.geometry.coordinates[0].map(
+              (c: number[]) => [c[1], c[0]] as LatLngExpression
+            );
+            const farm = {
+              id: f.properties.farm_id || f.properties.id,
+              name:
+                f.properties.Farmer_Name ||
+                f.properties.name ||
+                f.properties.farm_id,
+              village: f.properties.Vill_Name || f.properties.village,
+              area: f.properties.Area || f.properties.area,
+              recentNDVI:
+                f.properties.recent_ndvi || f.properties.recentNDVI || 0,
+              prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
+              harvest: f.properties.harvest_flag || f.properties.harvest || 0,
+              bounds: coords,
+            };
+            newFarmsMap.set(farm.id, farm);
+          });
 
-        hasMore = geojson.metadata && page < geojson.metadata.total_pages;
-        page++;
+          // Update UI after each page loads
+          setAllLoadedFarms(new Map(newFarmsMap));
+          setFarms(Array.from(newFarmsMap.values()));
+        }
       }
 
-      setAllLoadedFarms(newFarmsMap);
-      setFarms(Array.from(newFarmsMap.values()));
       setLoadedBboxes((prev) => new Set([...prev, bbox]));
     } catch (err) {
       console.error("Failed to load farms:", err);
       if (reset) {
         setFarms([]);
       }
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Handle viewport changes with debouncing
