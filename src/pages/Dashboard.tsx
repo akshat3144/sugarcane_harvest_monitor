@@ -95,13 +95,13 @@ const Dashboard = () => {
 
     setLoading(true);
     try {
-      // Load first page or subsequent pages
+      // Load all pages for viewport
       let page = 1;
       let allFarms: any[] = reset ? [] : [...farms];
       let hasMore = true;
 
-      while (hasMore && page <= 3) {
-        // Load up to 3 pages progressively
+      while (hasMore) {
+        // Load ALL pages progressively (no limit)
         if (loadedPages.has(page) && !reset) {
           page++;
           continue;
