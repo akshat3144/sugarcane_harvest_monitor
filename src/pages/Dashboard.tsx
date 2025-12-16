@@ -39,18 +39,19 @@ const Dashboard = () => {
   const [stats, setStats] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [currentBbox, setCurrentBbox] = useState<string | undefined>(undefined);
 
-  // Load all farms at once - no optimizations
-  const loadAllFarms = async () => {
+  // Load farms in viewport
+  const loadAllFarms = async (bbox?: string) => {
     setLoading(true);
     try {
-      // Request all farms in one go with very large page size
+      // Request farms with bbox filter for viewport
       const geojson = await fetchFarmsGeoJSON(
         selectedVillage !== "all" ? selectedVillage : undefined,
-        undefined, // No bbox filter
+        bbox, // Use bbox for viewport filtering
         undefined, // No zoom filter
         1, // Page 1
-        100000, // Large page size to get everything at once
+        100000, // Large page size
         selectedMonth !== "all" ? selectedMonth : undefined,
         selectedYear !== "all" ? selectedYear : undefined
       );
@@ -84,10 +85,25 @@ const Dashboard = () => {
     setLoading(false);
   };
 
+  // Handle viewport changes
+  const handleViewportChange = useCallback((bbox: string, zoom: number) => {
+    setCurrentBbox(bbox);
+  }, []);
+
   // Load farms on mount or when filters change
   useEffect(() => {
-    loadAllFarms();
+    loadAllFarms(undefined); // Initial load without bbox
   }, [selectedVillage, selectedMonth, selectedYear, refreshKey]);
+
+  // Load farms when viewport changes
+  useEffect(() => {
+    if (currentBbox) {
+      const timeoutId = setTimeout(() => {
+        loadAllFarms(currentBbox);
+      }, 500); // Debounce viewport changes
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentBbox]);
 
   useEffect(() => {
     const loadStats = async () => {
@@ -171,6 +187,7 @@ const Dashboard = () => {
                 showHarvestOnly ? farms.filter((f) => f.harvest === 1) : farms
               }
               getHealthColor={getHealthColor}
+              onViewportChange={handleViewportChange}
               initialFitBounds={farms.length > 0 && refreshKey === 0}
             />
             {loading && farms.length === 0 && (
@@ -187,7 +204,7 @@ const Dashboard = () => {
                   zIndex: 1000,
                 }}
               >
-                Loading initial farms...
+                Loading farms...
               </div>
             )}
           </Card>
