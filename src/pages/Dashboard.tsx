@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { LatLngExpression } from "leaflet";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ const Dashboard = () => {
   const [selectedVillage, setSelectedVillage] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
+  const [showHarvestOnly, setShowHarvestOnly] = useState(false);
   const [farms, setFarms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -149,9 +151,25 @@ const Dashboard = () => {
             onMonthChange={setSelectedMonth}
             onYearChange={setSelectedYear}
           />
+          <Card className="p-4 bg-dashboard-card border-dashboard-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Leaf className="h-5 w-5 text-success" />
+                <span className="text-sm font-medium text-white">
+                  Show Harvest Ready Only
+                </span>
+              </div>
+              <Switch
+                checked={showHarvestOnly}
+                onCheckedChange={setShowHarvestOnly}
+              />
+            </div>
+          </Card>
           <Card className="h-[300px] md:h-[calc(100vh-200px)] overflow-hidden bg-dashboard-card border-dashboard-border">
             <FarmMap
-              farms={farms}
+              farms={
+                showHarvestOnly ? farms.filter((f) => f.harvest === 1) : farms
+              }
               getHealthColor={getHealthColor}
               initialFitBounds={farms.length > 0 && refreshKey === 0}
             />
