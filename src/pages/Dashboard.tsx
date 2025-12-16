@@ -38,59 +38,43 @@ const Dashboard = () => {
   const [statsLoading, setStatsLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Load all farms
+  // Load all farms at once - no optimizations
   const loadAllFarms = async () => {
     setLoading(true);
     try {
-      // Load all farms in batches
-      let allFarms: any[] = [];
-      let page = 1;
-      let hasMore = true;
-      const pageSize = 5000; // Larger page size for efficiency
+      // Request all farms in one go with very large page size
+      const geojson = await fetchFarmsGeoJSON(
+        selectedVillage !== "all" ? selectedVillage : undefined,
+        undefined, // No bbox filter
+        undefined, // No zoom filter
+        1, // Page 1
+        100000, // Large page size to get everything at once
+        selectedMonth !== "all" ? selectedMonth : undefined,
+        selectedYear !== "all" ? selectedYear : undefined
+      );
 
-      while (hasMore) {
-        const geojson = await fetchFarmsGeoJSON(
-          selectedVillage !== "all" ? selectedVillage : undefined,
-          undefined, // No bbox filter - load all
-          undefined,
-          page,
-          pageSize,
-          selectedMonth !== "all" ? selectedMonth : undefined,
-          selectedYear !== "all" ? selectedYear : undefined
+      // Parse all farms
+      const allFarms = geojson.features.map((f: any) => {
+        const coords = f.geometry.coordinates[0].map(
+          (c: number[]) => [c[1], c[0]] as LatLngExpression
         );
+        return {
+          id: f.properties.farm_id || f.properties.id,
+          name:
+            f.properties.Farmer_Name ||
+            f.properties.name ||
+            f.properties.farm_id,
+          village: f.properties.Vill_Name || f.properties.village,
+          area: f.properties.Area || f.properties.area,
+          recentNDVI: f.properties.recent_ndvi || f.properties.recentNDVI || 0,
+          prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
+          harvest: f.properties.harvest_flag || f.properties.harvest || 0,
+          bounds: coords,
+          surveyDate: f.properties["Survey Date"] || f.properties.survey_date,
+        };
+      });
 
-        // Parse GeoJSON features into FarmMap format
-        const parsed = geojson.features.map((f: any) => {
-          const coords = f.geometry.coordinates[0].map(
-            (c: number[]) => [c[1], c[0]] as LatLngExpression
-          );
-          return {
-            id: f.properties.farm_id || f.properties.id,
-            name:
-              f.properties.Farmer_Name ||
-              f.properties.name ||
-              f.properties.farm_id,
-            village: f.properties.Vill_Name || f.properties.village,
-            area: f.properties.Area || f.properties.area,
-            recentNDVI:
-              f.properties.recent_ndvi || f.properties.recentNDVI || 0,
-            prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
-            harvest: f.properties.harvest_flag || f.properties.harvest || 0,
-            bounds: coords,
-            surveyDate: f.properties["Survey Date"] || f.properties.survey_date,
-          };
-        });
-
-        allFarms = [...allFarms, ...parsed];
-
-        // Check if there are more pages
-        const totalPages = geojson.metadata?.total_pages || 1;
-        hasMore = page < totalPages;
-        page++;
-
-        // Update UI with current batch for progressive loading feel
-        setFarms([...allFarms]);
-      }
+      setFarms(allFarms);
     } catch (err) {
       console.error("Failed to load farms:", err);
       setFarms([]);
