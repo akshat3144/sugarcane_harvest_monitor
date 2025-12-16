@@ -15,6 +15,7 @@ import { HarvestChart } from "@/components/dashboard/HarvestChart";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { FarmMap } from "@/components/dashboard/FarmMap";
 import CsvUpload from "@/components/dashboard/CsvUpload";
+import { DateFilter } from "@/components/dashboard/DateFilter";
 import "leaflet/dist/leaflet.css";
 import { fetchFarmsGeoJSON, fetchStats } from "@/lib/api";
 
@@ -29,6 +30,8 @@ const getHealthColor = (ndvi: number) => {
 const Dashboard = () => {
   const [selectedCrop, setSelectedCrop] = useState("sugarcane");
   const [selectedVillage, setSelectedVillage] = useState("all");
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
   const [farms, setFarms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
@@ -52,7 +55,9 @@ const Dashboard = () => {
         undefined, // No bbox filter for initial load
         undefined,
         1,
-        50 // Start with just 50 farms
+        50, // Start with just 50 farms
+        selectedMonth !== "all" ? selectedMonth : undefined,
+        selectedYear !== "all" ? selectedYear : undefined
       );
 
       // Parse GeoJSON features into FarmMap format
@@ -72,6 +77,7 @@ const Dashboard = () => {
           prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
           harvest: f.properties.harvest_flag || f.properties.harvest || 0,
           bounds: coords,
+          surveyDate: f.properties["Survey Date"] || f.properties.survey_date,
         };
       });
 
@@ -142,7 +148,9 @@ const Dashboard = () => {
         bbox,
         zoom,
         1,
-        1000
+        1000,
+        selectedMonth !== "all" ? selectedMonth : undefined,
+        selectedYear !== "all" ? selectedYear : undefined
       );
 
       // Parse and display first batch immediately
@@ -162,6 +170,7 @@ const Dashboard = () => {
           prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
           harvest: f.properties.harvest_flag || f.properties.harvest || 0,
           bounds: coords,
+          surveyDate: f.properties["Survey Date"] || f.properties.survey_date,
         };
         newFarmsMap.set(farm.id, farm);
       });
@@ -183,7 +192,9 @@ const Dashboard = () => {
             bbox,
             zoom,
             page,
-            1000
+            1000,
+            selectedMonth !== "all" ? selectedMonth : undefined,
+            selectedYear !== "all" ? selectedYear : undefined
           );
 
           geojson.features.forEach((f: any) => {
@@ -203,6 +214,8 @@ const Dashboard = () => {
               prevNDVI: f.properties.prev_ndvi || f.properties.prevNDVI || 0,
               harvest: f.properties.harvest_flag || f.properties.harvest || 0,
               bounds: coords,
+              surveyDate:
+                f.properties["Survey Date"] || f.properties.survey_date,
             };
             newFarmsMap.set(farm.id, farm);
           });
@@ -232,7 +245,7 @@ const Dashboard = () => {
   // Load initial farms on mount or when refreshKey changes
   useEffect(() => {
     loadInitialFarms();
-  }, [selectedVillage, refreshKey]);
+  }, [selectedVillage, selectedMonth, selectedYear, refreshKey]);
 
   // Load farms when viewport changes (only after initial load)
   useEffect(() => {
@@ -243,14 +256,24 @@ const Dashboard = () => {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [currentBbox, currentZoom, selectedVillage, refreshKey, initialLoadDone]);
+  }, [
+    currentBbox,
+    currentZoom,
+    selectedVillage,
+    selectedMonth,
+    selectedYear,
+    refreshKey,
+    initialLoadDone,
+  ]);
 
   useEffect(() => {
     const loadStats = async () => {
       setStatsLoading(true);
       try {
         const s = await fetchStats(
-          selectedVillage !== "all" ? selectedVillage : undefined
+          selectedVillage !== "all" ? selectedVillage : undefined,
+          selectedMonth !== "all" ? selectedMonth : undefined,
+          selectedYear !== "all" ? selectedYear : undefined
         );
         setStats(s);
       } catch (err) {
@@ -259,7 +282,7 @@ const Dashboard = () => {
       setStatsLoading(false);
     };
     loadStats();
-  }, [selectedVillage, refreshKey]);
+  }, [selectedVillage, selectedMonth, selectedYear, refreshKey]);
 
   const handleUploadComplete = () => {
     setRefreshKey((k) => k + 1);
@@ -299,6 +322,12 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-2 md:p-4">
         {/* Left Side - Map */}
         <div className="md:col-span-7 space-y-4 order-1 md:order-1">
+          <DateFilter
+            selectedMonth={selectedMonth}
+            selectedYear={selectedYear}
+            onMonthChange={setSelectedMonth}
+            onYearChange={setSelectedYear}
+          />
           <Card className="h-[300px] md:h-[calc(100vh-200px)] overflow-hidden bg-dashboard-card border-dashboard-border">
             <FarmMap
               farms={farms}

@@ -41,7 +41,9 @@ export const fetchFarmsGeoJSON = async (
   bbox?: string,
   zoom?: number,
   page: number = 1,
-  pageSize: number = 1000
+  pageSize: number = 1000,
+  month?: string,
+  year?: string
 ) => {
   const url = new URL(`${API_BASE_URL}/farms`);
   if (village) {
@@ -52,6 +54,12 @@ export const fetchFarmsGeoJSON = async (
   }
   if (zoom !== undefined) {
     url.searchParams.append("zoom", zoom.toString());
+  }
+  if (month) {
+    url.searchParams.append("month", month);
+  }
+  if (year) {
+    url.searchParams.append("year", year);
   }
   url.searchParams.append("page", page.toString());
   url.searchParams.append("page_size", pageSize.toString());
@@ -67,10 +75,20 @@ export const fetchFarmsGeoJSON = async (
 /**
  * Fetch summary statistics
  */
-export const fetchStats = async (village?: string): Promise<StatsData> => {
+export const fetchStats = async (
+  village?: string,
+  month?: string,
+  year?: string
+): Promise<StatsData> => {
   const url = new URL(`${API_BASE_URL}/stats/summary`);
   if (village) {
     url.searchParams.append("village", village);
+  }
+  if (month) {
+    url.searchParams.append("month", month);
+  }
+  if (year) {
+    url.searchParams.append("year", year);
   }
 
   const response = await fetch(url.toString());

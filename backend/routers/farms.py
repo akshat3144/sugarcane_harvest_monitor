@@ -52,6 +52,8 @@ def list_farms(
     bbox: Optional[str] = Query(None, description="Bounding box: minx,miny,maxx,maxy"),
     village: Optional[str] = Query(None),
     zoom: Optional[int] = Query(None, description="Map zoom level for geometry simplification"),
+    month: Optional[str] = Query(None, description="Filter by survey month (1-12)"),
+    year: Optional[str] = Query(None, description="Filter by survey year (e.g., 2024)"),
     page: int = 1,
     page_size: int = 1000,
     db: Session = Depends(get_db)
@@ -82,6 +84,19 @@ def list_farms(
     # Filter by village
     if village:
         query = query.filter(Farm.vill_name == village)
+    
+    # Filter by survey date (month and/or year)
+    # Survey date format in DB: "M/D/YYYY" or "MM/DD/YYYY"
+    if month and month != "all":
+        # Filter by month (handles both single and double digit months)
+        query = query.filter(
+            (Farm.survey_date.like(f"{month}/%")) | 
+            (Farm.survey_date.like(f"{month.zfill(2)}/%"))
+        )
+    
+    if year and year != "all":
+        # Filter by year (last 4 characters should be the year)
+        query = query.filter(Farm.survey_date.like(f"%/{year}"))
     
     # Filter by bounding box (viewport-based loading)
     if bbox:

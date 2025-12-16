@@ -22,6 +22,7 @@ interface Farm {
   prevNDVI: number;
   harvest: number;
   bounds: LatLngExpression[];
+  surveyDate?: string;
 }
 
 interface FarmMapProps {
@@ -207,40 +208,48 @@ export const FarmMap = ({
               }}
             >
               <Popup>
-                <div className="p-2 min-w-[200px] text-white">
-                  <h3 className="font-bold mb-2 text-white">{farm.name}</h3>
+                <div className="p-2 min-w-[200px]">
+                  <h3 className="font-bold mb-2 text-gray-900">{farm.name}</h3>
                   <div className="space-y-1 text-sm">
                     <p>
-                      <span className="font-medium text-white/80">
+                      <span className="font-medium text-gray-700">
                         Farm ID:
                       </span>{" "}
-                      <span className="text-white/90">{farm.id}</span>
+                      <span className="text-gray-900">{farm.id}</span>
                     </p>
                     <p>
-                      <span className="font-medium text-white/80">
+                      <span className="font-medium text-gray-700">
                         Village:
                       </span>{" "}
-                      <span className="text-white/90">{farm.village}</span>
+                      <span className="text-gray-900">{farm.village}</span>
+                    </p>
+                    {farm.surveyDate && (
+                      <p>
+                        <span className="font-medium text-gray-700">
+                          Survey Date:
+                        </span>{" "}
+                        <span className="text-gray-900">{farm.surveyDate}</span>
+                      </p>
+                    )}
+                    <p>
+                      <span className="font-medium text-gray-700">Area:</span>{" "}
+                      <span className="text-gray-900">{farm.area} acres</span>
                     </p>
                     <p>
-                      <span className="font-medium text-white/80">Area:</span>{" "}
-                      <span className="text-white/90">{farm.area} acres</span>
-                    </p>
-                    <p>
-                      <span className="font-medium text-white/80">
+                      <span className="font-medium text-gray-700">
                         Recent NDVI:
                       </span>{" "}
-                      <span className="text-white/90">{farm.recentNDVI}</span>
+                      <span className="text-gray-900">{farm.recentNDVI}</span>
                     </p>
                     <p>
-                      <span className="font-medium text-white/80">
+                      <span className="font-medium text-gray-700">
                         Previous NDVI:
                       </span>{" "}
-                      <span className="text-white/90">{farm.prevNDVI}</span>
+                      <span className="text-gray-900">{farm.prevNDVI}</span>
                     </p>
                     <p>
-                      <span className="font-medium text-white/80">Change:</span>{" "}
-                      <span className="text-white/90">
+                      <span className="font-medium text-gray-700">Change:</span>{" "}
+                      <span className="text-gray-900">
                         {(farm.recentNDVI - farm.prevNDVI).toFixed(3)}
                       </span>
                     </p>

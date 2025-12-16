@@ -10,7 +10,12 @@ from database import get_db, Farm
 router = APIRouter()
 
 @router.get("/summary")
-def stats_summary(village: str = Query(None), db: Session = Depends(get_db)):
+def stats_summary(
+    village: str = Query(None), 
+    month: str = Query(None, description="Filter by survey month (1-12)"),
+    year: str = Query(None, description="Filter by survey year (e.g., 2024)"),
+    db: Session = Depends(get_db)
+):
     """Get dashboard stats from PostGIS database"""
     
     # Base query
@@ -19,6 +24,19 @@ def stats_summary(village: str = Query(None), db: Session = Depends(get_db)):
     # Filter by village if specified
     if village and village.lower() != "all":
         query = query.filter(func.lower(Farm.vill_name) == village.lower())
+    
+    # Filter by survey date (month and/or year)
+    # Survey date format in DB: "M/D/YYYY" or "MM/DD/YYYY"
+    if month and month != "all":
+        # Filter by month (handles both single and double digit months)
+        query = query.filter(
+            (Farm.survey_date.like(f"{month}/%")) | 
+            (Farm.survey_date.like(f"{month.zfill(2)}/%"))
+        )
+    
+    if year and year != "all":
+        # Filter by year (last 4 characters should be the year)
+        query = query.filter(Farm.survey_date.like(f"%/{year}"))
     
     # Get total farms
     total_farms = query.count()
