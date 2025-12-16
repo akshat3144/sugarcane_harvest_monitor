@@ -190,7 +190,7 @@ const Dashboard = () => {
               onViewportChange={handleViewportChange}
               initialFitBounds={farms.length > 0 && refreshKey === 0}
             />
-            {loading && farms.length === 0 && (
+            {loading && (
               <div
                 style={{
                   position: "absolute",
