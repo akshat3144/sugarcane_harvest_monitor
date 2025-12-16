@@ -42,7 +42,7 @@ const Dashboard = () => {
   const [currentBbox, setCurrentBbox] = useState<string | undefined>(undefined);
 
   // Load farms in viewport
-  const loadAllFarms = async (bbox?: string) => {
+  const loadAllFarms = async (bbox?: string, pageSize: number = 100000) => {
     setLoading(true);
     try {
       // Request farms with bbox filter for viewport
@@ -51,7 +51,7 @@ const Dashboard = () => {
         bbox, // Use bbox for viewport filtering
         undefined, // No zoom filter
         1, // Page 1
-        100000, // Large page size
+        pageSize, // Variable page size
         selectedMonth !== "all" ? selectedMonth : undefined,
         selectedYear !== "all" ? selectedYear : undefined
       );
@@ -92,14 +92,14 @@ const Dashboard = () => {
 
   // Load farms on mount or when filters change
   useEffect(() => {
-    loadAllFarms(undefined); // Initial load without bbox
+    loadAllFarms(undefined, 50); // Initial load with just 50 farms to fit viewport
   }, [selectedVillage, selectedMonth, selectedYear, refreshKey]);
 
   // Load farms when viewport changes
   useEffect(() => {
     if (currentBbox) {
       const timeoutId = setTimeout(() => {
-        loadAllFarms(currentBbox);
+        loadAllFarms(currentBbox, 100000); // Load all farms in viewport
       }, 500); // Debounce viewport changes
       return () => clearTimeout(timeoutId);
     }
